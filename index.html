@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Workspace - Prototype</title>
+<style>
+  :root{
+    --bg:#0b0b0d;
+    --card:#0f1113;
+    --muted:#9aa0a6;
+    --accent:#6ee7b7;
+    --glass: rgba(255,255,255,0.03);
+    --panel: rgba(255,255,255,0.02);
+    --card-border: rgba(255,255,255,0.04);
+    --radius:14px;
+    --pill-radius:999px;
+    --glass-strong: rgba(255,255,255,0.04);
+    --shadow: 0 6px 24px rgba(2,6,23,0.7);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+
+  /* page reset */
+  *{box-sizing:border-box}
+  html,body{height:100%; margin:0; background:var(--bg); color:#e6eef1; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale}
+  a{color:inherit; text-decoration:none}
+  /* animated moving shapes background */
+  .bg {
+    position:fixed; inset:0; z-index:0; overflow:hidden;
+    background: radial-gradient(ellipse at 10% 10%, rgba(110,231,183,0.05) 0%, transparent 20%),
+                radial-gradient(ellipse at 90% 90%, rgba(99,102,241,0.035) 0%, transparent 15%),
+                var(--bg);
+  }
+  .shape{
+    position:absolute;
+    border-radius:50%;
+    filter: blur(40px);
+    opacity:0.5;
+    mix-blend-mode: screen;
+    animation: float 18s ease-in-out infinite;
+    transform-origin:center;
+  }
+  .shape--1{width:420px;height:420px; left:-8%; top:5%; background: linear-gradient(135deg, rgba(99,102,241,0.7), rgba(110,231,183,0.5)); animation-duration:22s}
+  .shape--2{width:300px;height:300px; right:-6%; bottom:-4%; background: linear-gradient(135deg, rgba(236,72,153,0.35), rgba(59,130,246,0.25)); animation-duration:28s}
+  .shape--3{width:180px;height:180px; left:20%; bottom:10%; background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(236,72,153,0.18)); animation-duration:20s}
+  @keyframes float{
+    0%{transform: translateY(0) scale(1)}
+    50%{transform: translateY(-28px) scale(1.06)}
+    100%{transform: translateY(0) scale(1)}
+  }
+
+  /* page layout */
+  .app {
+    position:relative;
+    min-height:100vh;
+    z-index:1;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:28px;
+  }
+
+  /* left sidebar toggle (checkbox hack) */
+  #menuToggle{display:none}
+  .topbar{
+    position:fixed;
+    top:18px;
+    left:18px;
+    right:18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    z-index:5;
+    pointer-events:none;
+  }
+  .topbar .left{
+    display:flex; gap:12px; align-items:center; pointer-events:auto;
+  }
+  /* burger */
+  .burger{
+    width:46px; height:46px; border-radius:12px;
+    background:var(--glass); display:flex; align-items:center; justify-content:center; cursor:pointer;
+    border:1px solid var(--card-border); box-shadow:var(--shadow);
+  }
+  .burger span{
+    width:18px; height:2px; background:var(--muted); display:block; position:relative; border-radius:2px;
+  }
+  .burger span::before, .burger span::after{
+    content:""; position:absolute; left:0; right:0; height:2px; background:var(--muted); border-radius:2px;
+  }
+  .burger span::before{top:-6px}
+  .burger span::after{bottom:-6px}
+
+  /* avatar area */
+  .profile{
+    display:flex; align-items:center; gap:12px; pointer-events:auto;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    padding:10px 14px; border-radius:999px; border:1px solid var(--card-border);
+  }
+  .avatar{
+    width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg,#24324a,#1f2a36); display:flex;align-items:center;justify-content:center;
+    font-weight:700; color:#fff; font-size:18px; box-shadow: inset 0 -6px 12px rgba(0,0,0,0.25);
+  }
+  .welcome{font-size:14px; color:var(--muted); line-height:1}
+  .welcome strong{display:block; color:#fff; font-size:15px}
+
+  /* left sidebar */
+  .sidebar {
+    position:fixed; top:80px; left:18px; width:220px; padding:18px; border-radius:12px; background:var(--panel); z-index:4;
+    border:1px solid var(--card-border); box-shadow:var(--shadow);
+    transform: translateX(-120%); transition:transform .28s cubic-bezier(.2,.9,.2,1);
+    pointer-events:none;
+  }
+  #menuToggle:checked ~ .sidebar { transform: translateX(0); pointer-events:auto; }
+  .sidebar nav{display:flex; flex-direction:column; gap:8px}
+  .sidebar a{padding:10px 12px; border-radius:10px; color:var(--muted); display:flex; gap:10px; align-items:center; font-size:14px}
+  .sidebar a:hover{background:rgba(255,255,255,0.02); color:#fff}
+
+  /* main card area */
+  .workspace {
+    width:980px; max-width:calc(100% - 56px); margin-top:60px; padding:30px; border-radius:18px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid var(--card-border); box-shadow: 0 10px 40px rgba(2,6,23,0.6);
+    position:relative; overflow:hidden;
+  }
+  .workspace-head{display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:18px}
+  .page-tabs{display:flex; gap:10px}
+  .page-tab{
+    padding:8px 12px; border-radius:999px; background:transparent; color:var(--muted); border:1px solid transparent; cursor:pointer; font-size:13px;
+  }
+  /* radio tabs - work/home/casual/ai */
+  input[name="page"]{display:none}
+  #tab-work:checked ~ .workspace .tab-work,
+  #tab-home:checked ~ .workspace .tab-home,
+  #tab-casual:checked ~ .workspace .tab-casual,
+  #tab-ai:checked ~ .workspace .tab-ai { display:block }
+  .tab-work, .tab-home, .tab-casual, .tab-ai { display:none }
+
+  /* page header area (avatar + welcome already in topbar) */
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 360px;
+    gap:20px;
+    align-items:start;
+  }
+
+  /* left column: four stacked square boxes */
+  .left-col{
+    display:flex; flex-direction:column; gap:18px;
+  }
+  .box{
+    background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));
+    border:1px solid var(--card-border);
+    padding:18px; border-radius:14px; min-height:120px; display:flex; align-items:center; justify-content:space-between;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.6);
+    position:relative;
+  }
+  .box .title{font-weight:600; font-size:16px}
+  .box .content{color:var(--muted); font-size:13px}
+  .box .pill{
+    position:absolute; top:12px; right:12px; background:var(--accent); color:#042018; padding:6px 10px; font-weight:600; font-size:12px; border-radius:999px;
+    box-shadow: 0 4px 14px rgba(18,24,28,0.6)
+  }
+
+  /* small pill on top-right of each rectangle */
+  .box .updates{ position:absolute; top:12px; left:12px; background:#26292d; color:var(--muted); padding:6px 10px; border-radius:999px; font-size:12px; border:1px solid var(--card-border) }
+
+  /* right column: workspace details - project list or chat */
+  .right-col{
+    background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
+    border-radius:12px; padding:16px; min-height:360px; border:1px solid var(--card-border);
+  }
+  .section-title{font-weight:700; font-size:14px; margin-bottom:12px; color:#fff}
+  .project{
+    background:rgba(255,255,255,0.02); padding:12px; border-radius:10px; margin-bottom:10px;
+  }
+  .progress{
+    height:8px; background:rgba(255,255,255,0.03); border-radius:999px; overflow:hidden;
+  }
+  .progress > i{ display:block; height:100%; background:linear-gradient(90deg, rgba(110,231,183,0.9), rgba(99,102,241,0.9)) }
+
+  /* news box (fixed bottom-right) */
+  #newsToggle{display:none}
+  .news-pill{
+    position:fixed; right:24px; bottom:22px; z-index:6;
+    background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    padding:12px 14px; border-radius:12px; border:1px solid var(--card-border); box-shadow:var(--shadow); cursor:pointer;
+    display:flex; gap:10px; align-items:center;
+  }
+  .news-pill .dot{width:10px;height:10px;border-radius:50%;background:#ffb86b; box-shadow:0 3px 8px rgba(255,184,107,0.12)}
+  /* news overlay */
+  .news-overlay{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:20; pointer-events:none;
+  }
+  #newsToggle:checked + .news-pill { transform: scale(0.98); }
+  #newsToggle:checked ~ .news-overlay { pointer-events:auto; }
+  #newsToggle:checked ~ .news-overlay .news-card { transform: translateY(0) scale(1); opacity:1 }
+  .news-card{
+    width:min(820px,92%); max-height:86vh; overflow:auto; padding:22px; border-radius:16px;
+    background:linear-gradient(180deg, rgba(14,16,18,0.99), rgba(8,9,12,0.95));
+    border:1px solid var(--card-border); box-shadow: 0 20px 40px rgba(0,0,0,0.7); opacity:0; transform: translateY(20px) scale(.98);
+    transition: all .28s cubic-bezier(.2,.9,.2,1);
+  }
+  .news-card header{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px}
+  .news-list{display:flex; flex-direction:column; gap:12px}
+  .news-item{padding:12px; border-radius:12px; background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.02)}
+  .news-actions{display:flex; gap:8px}
+
+  /* AI assistant 'chat-like' area inside AI tab */
+  .assistant{
+    height:360px; display:flex; flex-direction:column; gap:10px;
+  }
+  .assistant .messages{flex:1; overflow:auto; padding:10px; border-radius:12px; background:rgba(255,255,255,0.01)}
+  .assistant .input{display:flex; gap:8px; padding-top:8px}
+  .btn{
+    padding:8px 12px; border-radius:10px; background:linear-gradient(90deg,#4f46e5,#06b6d4); color:#fff; border:none; cursor:pointer; font-weight:600; font-size:13px;
+  }
+
+  /* small responsive tweaks */
+  @media (max-width:980px){
+    .grid{grid-template-columns: 1fr; }
+    .right-col{order:2}
+    .left-col{order:1}
+    .sidebar{display:none}
+    .workspace{padding:18px}
+  }
+
+  /* notes for developer/user */
+  .notes{font-size:12px;color:var(--muted); margin-top:12px}
+</style>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="shape shape--1"></div>
+    <div class="shape shape--2"></div>
+    <div class="shape shape--3"></div>
+  </div>
+
+  <!-- topbar + menu toggle -->
+  <input type="checkbox" id="menuToggle" aria-hidden="true">
+  <div class="topbar">
+    <div class="left">
+      <label for="menuToggle" class="burger" title="Open menu" role="button" aria-pressed="false">
+        <span></span>
+      </label>
+      <div style="width:12px"></div>
+      <!-- page radios -->
+      <div style="display:flex; gap:8px; align-items:center">
+        <label for="tab-work" class="page-tab">Work</label>
+        <label for="tab-home" class="page-tab">Home</label>
+        <label for="tab-casual" class="page-tab">Casual</label>
+        <label for="tab-ai" class="page-tab">AI Assistant</label>
+      </div>
+    </div>
+
+    <div class="profile">
+      <div class="avatar">U</div>
+      <div>
+        <div class="welcome"><strong>Welcome back</strong><span style="color:var(--muted); font-size:12px">You have 3 new items</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- left sidebar content (appears when burger checked) -->
+  <aside class="sidebar" aria-hidden="true">
+    <nav>
+      <label for="tab-work" style="cursor:pointer; display:block; padding:8px 10px; border-radius:8px;">🏢 Work</label>
+      <label for="tab-home" style="cursor:pointer; display:block; padding:8px 10px; border-radius:8px;">🏡 Home</label>
+      <label for="tab-casual" style="cursor:pointer; display:block; padding:8px 10px; border-radius:8px;">☕ Casual</label>
+      <label for="tab-ai" style="cursor:pointer; display:block; padding:8px 10px; border-radius:8px;">🤖 AI Assistant</label>
+    </nav>
+  </aside>
+
+  <!-- page radios -->
+  <input type="radio" id="tab-work" name="page" checked>
+  <input type="radio" id="tab-home" name="page">
+  <input type="radio" id="tab-casual" name="page">
+  <input type="radio" id="tab-ai" name="page">
+
+  <main class="app" role="main">
+    <section class="workspace" aria-label="Workspace main area">
+
+      <!-- WORK TAB -->
+      <div class="tab-work">
+        <div class="workspace-head">
+          <div style="display:flex; flex-direction:column">
+            <div style="font-size:20px; font-weight:800">Workspace — Work</div>
+            <div style="color:var(--muted); font-size:13px">All your tasks, emails, projects and contacts</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center">
+            <button class="btn">New Email</button>
+            <button class="btn" style="background:transparent; border:1px solid var(--card-border); color:var(--muted)">Settings</button>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="left-col">
+            <article class="box" aria-labelledby="emailTitle">
+              <div>
+                <div class="title" id="emailTitle">Email</div>
+                <div class="content">Inbox preview — 2 unread</div>
+              </div>
+              <div style="text-align:right">
+                <div class="content" style="font-size:12px">Last msg: Project update</div>
+                <div class="pill" title="Quick actions">Compose</div>
+                <div class="updates">3</div>
+              </div>
+            </article>
+
+            <article class="box" aria-labelledby="projectsTitle">
+              <div>
+                <div class="title" id="projectsTitle">Projects</div>
+                <div class="content">Active projects and progress</div>
+                <div style="margin-top:10px; width:220px">
+                  <div class="project">
+                    <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px">
+                      <div>Client A</div><div style="color:var(--muted)">45%</div>
+                    </div>
+                    <div class="progress" aria-hidden="true"><i style="width:45%"></i></div>
+                  </div>
+                  <div class="project">
+                    <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px">
+                      <div>Internal Revamp</div><div style="color:var(--muted)">78%</div>
+                    </div>
+                    <div class="progress"><i style="width:78%"></i></div>
+                  </div>
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div class="pill">Open</div>
+                <div class="updates">5</div>
+              </div>
+            </article>
+
+            <article class="box" aria-labelledby="requestsTitle">
+              <div>
+                <div class="title" id="requestsTitle">Requests</div>
+                <div class="content">Transfer requests, proposals, approvals</div>
+                <ul style="margin:12px 0 0 18px; color:var(--muted); font-size:13px">
+                  <li>Transfer: Asset #221 (pending)</li>
+                  <li>New proposal: Sales Q4</li>
+                </ul>
+              </div>
+              <div style="text-align:right">
+                <div class="pill">Manage</div>
+                <div class="updates">2</div>
+              </div>
+            </article>
+
+            <article class="box" aria-labelledby="contactsTitle">
+              <div>
+                <div class="title" id="contactsTitle">Contacts</div>
+                <div class="content">Advisers, supervisors, managers</div>
+                <div style="margin-top:10px; color:var(--muted); font-size:13px">
+                  • Sarah (Manager) • Omar (Advisor) • Leila (Supervisor)
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div class="pill">Call</div>
+                <div class="updates">1</div>
+              </div>
+            </article>
+          </div>
+
+          <aside class="right-col" aria-label="Details and assistant area">
+            <div style="display:flex; justify-content:space-between; align-items:start">
+              <div>
+                <div class="section-title">Quick actions</div>
+                <div style="color:var(--muted); font-size:13px">Report an issue, change progress, request transfer or proposal</div>
+              </div>
+              <div style="font-size:12px; color:var(--muted)">Today • <strong>Oct 28, 2025</strong></div>
+            </div>
+
+            <div style="margin-top:12px">
+              <div class="section-title">Reports & project controls</div>
+              <div style="display:flex; gap:8px; flex-direction:column">
+                <div style="display:flex; gap:12px; align-items:center">
+                  <input type="text" placeholder="Report an issue..." style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--card-border); background:transparent; color:#fff">
+                  <button class="btn" style="padding:10px 14px">Submit</button>
+                </div>
+
+                <div style="display:flex; gap:8px; align-items:center">
+                  <div style="flex:1">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <div style="font-weight:700">Internal Revamp</div>
+                      <div style="color:var(--muted)">78%</div>
+                    </div>
+                    <div class="progress" aria-hidden="true" style="margin-top:8px"><i style="width:78%"></i></div>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:8px">
+                    <button class="btn" style="background:transparent; border:1px solid var(--card-border); color:var(--muted)">Edit</button>
+                    <button class="btn" style="background:transparent; border:1px solid var(--card-border); color:var(--muted)">History</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:18px">
+              <div class="section-title">AI Assistant (Preview)</div>
+              <div style="color:var(--muted); font-size:13px">A minimal, chat-like area. Integration with a local AI requires backend/JS.</div>
+
+              <div class="assistant" style="margin-top:10px">
+                <div class="messages" aria-live="polite">
+                  <div style="margin-bottom:8px"><strong>Assistant</strong><div style="color:var(--muted); font-size:13px">I'll prioritise expiring items and give reminders.</div></div>
+                  <div style="margin-bottom:8px"><strong>User</strong><div style="color:var(--muted); font-size:13px">Remind me about Milk expiring tomorrow</div></div>
+                </div>
+                <div class="input">
+                  <input type="text" placeholder="Ask assistant..." style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--card-border); background:transparent; color:#fff">
+                  <button class="btn">Send</button>
+                </div>
+              </div>
+            </div>
+
+          </aside>
+        </div>
+
+        <div class="notes">Note: To make email send/receive, reminders, timers, and AI responses functional we will add JavaScript + backend/email service (I can implement that when you confirm).</div>
+      </div>
+
+      <!-- HOME TAB -->
+      <div class="tab-home">
+        <div class="workspace-head">
+          <div style="display:flex; flex-direction:column">
+            <div style="font-size:20px; font-weight:800">Workspace — Home</div>
+            <div style="color:var(--muted); font-size:13px">Recipes, cleaning tips, expirations & reminders</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center">
+            <button class="btn">Add Item</button>
+            <button class="btn" style="background:transparent; border:1px solid var(--card-border); color:var(--muted)">Kitchen</button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 360px; gap:20px">
+          <div style="background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01)); padding:18px; border-radius:12px; border:1px solid var(--card-border)">
+            <div class="section-title">Pantry & Expirations</div>
+            <ul style="color:var(--muted); margin-top:8px; font-size:14px">
+              <li>Milk — Expires Oct 29, 2025 <span style="color:#ffb86b">• soon</span></li>
+              <li>Olive Oil — Expires Jan 20, 2027</li>
+              <li>Tomatoes — Fresh (no expiry set)</li>
+            </ul>
+            <div style="margin-top:12px; color:var(--muted)">AI will rank critical items first, set timers for cooking, and give cleaning instructions (requires AI integration).</div>
+          </div>
+
+          <aside class="right-col">
+            <div class="section-title">Quick kitchen helpers</div>
+            <div style="color:var(--muted); font-size:13px; margin-top:8px">Select an item to get tips or set a timer (UI only)</div>
+
+            <div style="margin-top:12px">
+              <div style="background:rgba(255,255,255,0.01); padding:12px; border-radius:10px;">
+                <div style="display:flex; justify-content:space-between;">
+                  <div><strong>Cooking Timer</strong><div style="font-size:13px; color:var(--muted)">Set for the current meal</div></div>
+                  <div style="color:var(--muted)">—</div>
+                </div>
+                <div style="margin-top:8px; display:flex; gap:8px;">
+                  <button class="btn">Start 20m</button>
+                  <button class="btn" style="background:transparent; border:1px solid var(--card-border); color:var(--muted)">Custom</button>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- CASUAL TAB -->
+      <div class="tab-casual">
+        <div class="workspace-head">
+          <div style="display:flex; flex-direction:column">
+            <div style="font-size:20px; font-weight:800">Workspace — Casual</div>
+            <div style="color:var(--muted); font-size:13px">Fully customizable notes, lists and cards</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center">
+            <button class="btn">Add Card</button>
+            <button class="btn" style="background:transparent; border:1px solid var(--card-border); color:var(--muted)">Customize</button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 360px; gap:20px">
+          <div style="display:flex; gap:12px; flex-wrap:wrap">
+            <!-- some sample customizable cards -->
+            <div style="width:220px" class="box">
+              <div>
+                <div style="font-weight:700">Groceries</div>
+                <div style="color:var(--muted); font-size:13px">Eggs, Milk, Bread</div>
+              </div>
+              <div><div class="pill">Edit</div></div>
+            </div>
+
+            <div style="width:220px" class="box">
+              <div>
+                <div style="font-weight:700">Movies to watch</div>
+                <div style="color:var(--muted); font-size:13px">Add your list</div>
+              </div>
+              <div><div class="pill">Open</div></div>
+            </div>
+
+            <div style="width:220px" class="box">
+              <div>
+                <div style="font-weight:700">Workout</div>
+                <div style="color:var(--muted); font-size:13px">Chest + Cardio</div>
+              </div>
+              <div><div class="pill">Track</div></div>
+            </div>
+          </div>
+
+          <aside class="right-col">
+            <div class="section-title">Customize</div>
+            <div style="color:var(--muted); font-size:13px">Add, edit, delete cards — everything fully customizable (UI only, persistent storage requires JS/back-end)</div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- AI TAB -->
+      <div class="tab-ai">
+        <div class="workspace-head">
+          <div style="display:flex; flex-direction:column">
+            <div style="font-size:20px; font-weight:800">AI Assistant</div>
+            <div style="color:var(--muted); font-size:13px">Chat-like interface to integrate your local AI</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center">
+            <button class="btn">Connect Local AI</button>
+            <button class="btn" style="background:transparent; border:1px solid var(--card-border); color:var(--muted)">Settings</button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 360px; gap:20px">
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <div style="background:rgba(255,255,255,0.01); padding:14px; border-radius:12px">
+              <div style="font-weight:700">Assistant</div>
+              <div style="color:var(--muted); margin-top:8px">Ask anything. When integrated, assistant will set reminders, timers, and prioritize items.</div>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.01); padding:14px; border-radius:12px; height:360px; display:flex; flex-direction:column">
+              <div style="flex:1; overflow:auto; color:var(--muted)">
+                <div><strong>System:</strong> Example — "Prioritise expiry items and remind 24h before"</div>
+                <div style="margin-top:10px"><strong>User:</strong> "I am cooking pasta" <div style="color:var(--muted)">Assistant suggests timers</div></div>
+              </div>
+              <div style="display:flex; gap:8px; margin-top:8px">
+                <input type="text" placeholder="Message to assistant..." style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--card-border); background:transparent; color:#fff">
+                <button class="btn">Send</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="right-col">
+            <div class="section-title">Integrations</div>
+            <div style="color:var(--muted); font-size:13px; margin-top:8px">Connect to your local AI by providing an endpoint. (Integration requires JS & backend)</div>
+            <div style="margin-top:12px"><button class="btn">Connect Now</button></div>
+          </aside>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- news toggle pill & overlay -->
+  <input type="checkbox" id="newsToggle" aria-hidden="true">
+  <label for="newsToggle" class="news-pill" title="Open news">
+    <div class="dot" aria-hidden="true"></div>
+    <div style="display:flex; flex-direction:column; align-items:flex-start">
+      <div style="font-weight:700">News</div>
+      <div style="font-size:12px; color:var(--muted)">3 updates</div>
+    </div>
+  </label>
+
+  <div class="news-overlay" aria-hidden="true">
+    <div class="news-card" role="dialog" aria-modal="true" aria-label="News">
+      <header>
+        <div style="font-weight:800; font-size:16px">Latest News</div>
+        <label for="newsToggle" style="cursor:pointer; color:var(--muted); font-size:13px">Close</label>
+      </header>
+
+      <div class="news-list">
+        <article class="news-item">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div><strong>Project A — milestone reached</strong><div style="color:var(--muted); font-size:13px">Oct 27, 2025</div></div>
+            <div style="color:var(--muted); font-size:13px">Priority</div>
+          </div>
+        </article>
+
+        <article class="news-item">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div><strong>New transfer request</strong><div style="color:var(--muted); font-size:13px">Oct 26, 2025</div></div>
+            <div style="color:var(--muted); font-size:13px">Action</div>
+          </div>
+        </article>
+
+        <article class="news-item">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div><strong>Milk expiring soon</strong><div style="color:var(--muted); font-size:13px">Oct 29, 2025</div></div>
+            <div style="color:var(--muted); font-size:13px">Reminder</div>
+          </div>
+        </article>
+      </div>
+
+      <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center">
+        <div style="color:var(--muted); font-size:13px">You can tap any item to expand details (requires dynamic code to fetch details).</div>
+        <div style="display:flex; gap:8px">
+          <button class="btn" style="background:transparent; border:1px solid var(--card-border); color:var(--muted)">Mark all read</button>
+          <label for="newsToggle" class="btn" style="cursor:pointer">Close</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- accessibility: allow keyboard toggles -->
+  <script>
+    // No app logic here — purely optional helper to toggle aria-pressed for burger (keeps code minimal).
+    // If you'd like behavior (actual emails, reminders, AI), I'll add JS + backend in next step when you confirm.
+    (function(){
+      const burger = document.querySelector('.burger');
+      const menuToggle = document.getElementById('menuToggle');
+      burger?.addEventListener?.('click', ()=> {
+        // keep aria-pressed synced
+        setTimeout(()=> burger.setAttribute('aria-pressed', menuToggle.checked ? 'true' : 'false'), 10);
+      });
+    })();
+  </script>
+
+</body>
+</html>
